@@ -1,8 +1,8 @@
-function createPrintableSheetsNew() {
-    console.log("createPrintableSheetsNew()");
+function createPrintableSheetsV2() {
+    console.log("createPrintableSheetsV2()");
 
     var srcSheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
-    var destDoc = SpreadsheetApp.create("Printable_sheets_NEW_" + Date());
+    var destDoc = SpreadsheetApp.create("Printable_sheets_" + Date());
 
     createTemplate(destDoc, srcSheets[0]);
     templateSheet = destDoc.getSheets()[1];
@@ -25,11 +25,11 @@ function createPrintableSheetsNew() {
     destDoc.deleteSheet(templateSheet);
 }
 
-function createPickingListNew() {
-    console.log("createPickingListNew()");
+function createPickingListV2() {
+    console.log("createPickingListV2()");
 
     var srcSheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
-    var destDoc = SpreadsheetApp.create("Picking_list_NEW_" + Date());
+    var destDoc = SpreadsheetApp.create("Picking_list_" + Date());
 
     createTemplate(destDoc, srcSheets[0]);
     templateSheet = destDoc.getSheets()[1];
@@ -123,9 +123,7 @@ function updateTotalsSheet(totalSheet, srcSheet) {
     totalSheet
       .getRange( 1, col, srcSheet.getMaxRows(), 1 )
       .setValues( srcSheet.getRange("B:B").getDisplayValues() )
-      .setFontSize(15)
-      .setFontWeight("bold")
-      .setHorizontalAlignment("center");
+      .setFontSize(15).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
 
     var column_name = srcSheet.getName().replace(/grupp /g,"").replace(/Grupp /g,"").replace(/\"/g,"");
     totalSheet
@@ -175,8 +173,14 @@ function createGroupTotalsPage(destDoc, srcSheet) {
     setAlternatingColours(destSheet);
     destSheet.setFrozenColumns(0);
     destSheet.deleteColumns(3, destSheet.getMaxColumns() - 2);
-    destSheet.autoResizeColumns(2, 1);
     destSheet.autoResizeRows(1, destSheet.getMaxRows());
+
+    destSheet.autoResizeColumns(2, 1);
+    destSheet
+        .getRange(1, 2, destSheet.getMaxRows(), 1) // col 2, the totals values
+        .setWrapStrategy(SpreadsheetApp.WrapStrategy.OVERFLOW)
+        .setHorizontalAlignment("center")
+        .setVerticalAlignment("middle");
 }
 
 function createMemberPages(destDoc, srcSheet, templateSheet) {
@@ -207,13 +211,15 @@ function createMemberPages(destDoc, srcSheet, templateSheet) {
         destSheet
             .getRange(2, 2, srcRowCount, 4)
             .setValues(data)
-            .setFontSize(15).setFontWeight("bold");
+            .setFontSize(15).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle")
+            .setWrapStrategy(SpreadsheetApp.WrapStrategy.OVERFLOW);
         destSheet.getRange(1, 1)
             .setValue(currentSheetName)
-            .setFontSize(15).setFontWeight("bold");
-        
+            .setFontSize(15).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
+
         destSheet
-            .autoResizeColumns(2, 1)
+            .autoResizeColumns(2, 1);
+        destSheet
             .autoResizeColumns(4, 1);
     }
 }
