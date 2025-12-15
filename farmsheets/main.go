@@ -2,129 +2,120 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
-	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
 
-func drive_ex() {
-	ctx := context.Background()
-	scopes := []string{
-		"https://spreadsheets.google.com/feeds",
-		"https://www.googleapis.com/auth/spreadsheets",
-		"https://www.googleapis.com/auth/drive.file",
-		"https://www.googleapis.com/auth/drive",
-	}
-	creds := "./farm-sheets-94e924dcabb8.json"
+func DownloadSpreadSheetData(spredsheet_id string, svc *sheets.Service) (titles []string, values []*sheets.ValueRange) {
+	fmt.Println("Getting sheet data ...")
 
-	svc, err := drive.NewService(ctx, option.WithCredentialsFile(creds), option.WithScopes(scopes...))
-	if err != nil {
-		log.Fatalf("Unable to create Drive client: %v", err)
-	}
-
-	// files list object
-	r, err := svc.Files.List().
-		PageSize(10).
-		Fields("nextPageToken, files(id, name)").
-		Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve files: %v", err)
-	}
-
-	// print files
-	items := r.Files
-	for _, f := range items {
-		fmt.Printf("%s (%s)\n", f.Name, f.Id)
-	}
-}
-
-func write_sheet_ex(svc *sheets.Service, spredsheet_id string) {
-	writeRange := "Sheet1!A1:D2"
-	values := [][]interface{}{{"Stone", "Fire", "Coffee", "Smoke"}, {111, 222, 333, 444}}
-
-	body := &sheets.ValueRange{
-		Values: values,
-	}
-
-	_, err := svc.Spreadsheets.Values.Update(spredsheet_id, writeRange, body).
-		ValueInputOption("RAW").
-		Do()
-	if err != nil {
-		log.Fatalf("unable to update data: %v", err)
-	}
-
-	fmt.Println("Sheet updated successfully.")
-}
-
-func main() {
-
-	ctx := context.Background()
-	creds := "./farm-sheets-94e924dcabb8.json"
-
-	svc, err := sheets.NewService(ctx, option.WithCredentialsFile(creds))
-	if err != nil {
-		log.Fatalf("unable to create Sheets client: %v", err)
-	}
-
-	//spreadsheetID := "15fK71g_KNd52QEZwrJ2i9MKsJSQrZ4azhDiHRrnkl0s" // test document
-	spreadsheetID := "1C9PIXa_Tm1eP0lHVF3073Nvo3NNYnerdqgqVLQmmMUw" // dev lista
-	readRange := "A:D"
-
-	// retrieve values
-	resp, err := svc.Spreadsheets.Values.Get(spreadsheetID, readRange).Do()
-	if err != nil {
-		log.Fatalf("unable to read data: %v", err)
-	}
-	// output rows
-	for _, row := range resp.Values {
-		fmt.Println(row)
-	}
-
-	// NOTE:
-	//  we know there is a spreadsheetID and a separate sheetID for eaach sheet in the doc.
-	//  There is always one "default" sheet though, which we are getting
-	//sheet_array := svc.Spreadsheets.Sheets
-	//fmt.Print((sheet_array))
-
-	ss, err := svc.Spreadsheets.Get(spreadsheetID).Do()
+	ss, err := svc.Spreadsheets.Get(spredsheet_id).Do()
 	if err != nil {
 		log.Fatalf("unable to read data: %v", err)
 	}
 
-	// iterate sheets
+	titles = make([]string, 0, 100)
+	values = make([](*sheets.ValueRange), 0, 100)
+
 	for _, sheet := range ss.Sheets {
 		fmt.Printf("%s (%s)\n", sheet.Properties.Title, sheet.Properties.SheetType)
 
-		// here we get all of the valuse of the sheet
-		// it takes another server call
-		// THUS: I want to batch call the server for all the sheet values once and for all and
-		// store them in a slice (maybe slc = []sheets.ValueRange)
+		vals, err := svc.Spreadsheets.Values.Get(ss.SpreadsheetId, sheet.Properties.Title).Do()
+		values = append(values, vals)
+		titles = append(titles, sheet.Properties.Title)
 
-		vals, err := svc.Spreadsheets.Values.Get(spreadsheetID, sheet.Properties.Title).Do()
 		if err != nil {
 			fmt.Println("could not get sheet values")
-		} else {
-			fmt.Println(sheet.Properties.Title)
+			os.Exit(1)
+		}
+	}
+
+	fmt.Println("Download complete")
+	return
+}
+
+func SaveValuesCache(titles []string, values []*sheets.ValueRange) {
+	ftitles, err := os.Create("titles.json")
+	if err != nil {
+		return
+	}
+	fvalues, err := os.Create("values.json")
+	if err != nil {
+		return
+	}
+
+	json.NewEncoder(ftitles).Encode(titles)
+	json.NewEncoder(fvalues).Encode(values)
+
+	defer ftitles.Close()
+	defer fvalues.Close()
+}
+
+func LoadValuesCache() (titles []string, values []*sheets.ValueRange) {
+	f, err := os.Open("titles.json")
+	if err != nil {
+		return
+	}
+	err = json.NewDecoder(f).Decode(&titles)
+	if err != nil {
+		fmt.Println("could not load titles")
+		os.Exit(1)
+	}
+
+	f, err = os.Open("values.json")
+	if err != nil {
+		return
+	}
+	err = json.NewDecoder(f).Decode(&values)
+	if err != nil {
+		fmt.Println("could not load values")
+		os.Exit(1)
+	}
+
+	return
+}
+
+func PrintValuesDims(titles []string, values []*sheets.ValueRange) {
+	for idx, vals := range values {
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("Sheet title: ", titles[idx])
+		fmt.Println("Sheet values: ")
+		fmt.Println("Sheet rows: ", len(vals.Values))
+
+		// iterate rows
+		for idx, row := range vals.Values {
+			fmt.Println(idx, len(row))
+		}
+	}
+}
+
+func main() {
+	// TODO: get as a cmd line arg
+	do_download := true
+
+	if do_download {
+		ctx := context.Background()
+		creds := "./farm-sheets-94e924dcabb8.json"
+		svc, err := sheets.NewService(ctx, option.WithCredentialsFile(creds))
+		if err != nil {
+			log.Fatalf("unable to create Sheets client: %v", err)
 		}
 
-		// print length of the outer array (rows/lines)
-		fmt.Println(len(vals.Values))
+		//spredsheet_id := "15fK71g_KNd52QEZwrJ2i9MKsJSQrZ4azhDiHRrnkl0s" // test document
+		spredsheet_id := "1C9PIXa_Tm1eP0lHVF3073Nvo3NNYnerdqgqVLQmmMUw" // dev lista
 
-		// these are some of the row lengths
-		fmt.Println(len(vals.Values[0]))
-		fmt.Println(len(vals.Values[1]))
-		fmt.Println(len(vals.Values[2]))
-		fmt.Println(len(vals.Values[3]))
-		fmt.Println(len(vals.Values[4]))
-		fmt.Println(len(vals.Values[5]))
-		fmt.Println(len(vals.Values[6]))
-		fmt.Println(len(vals.Values[7]))
+		titles, values := DownloadSpreadSheetData(spredsheet_id, svc)
 
-		// print a few valuse
-		fmt.Println(vals.Values[7][0])
-		fmt.Println(vals.Values[7][1])
+		SaveValuesCache(titles, values)
+
+	} else {
+		titles, values := LoadValuesCache()
+		PrintValuesDims(titles, values)
 	}
 }
