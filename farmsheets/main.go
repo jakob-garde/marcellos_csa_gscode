@@ -132,8 +132,13 @@ func PrintValuesDims(titles []string, values []*sheets.ValueRange) {
 }
 
 func main() {
-	// TODO: get as a cmd line arg
-	do_download := true
+	do_download := false
+	if len(os.Args) > 1 && (os.Args[1] == "--download" || os.Args[1] == "-d") {
+		do_download = true
+	} else if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
+		fmt.Println("Use --download to cache sheet data")
+		return
+	}
 
 	if do_download {
 		ctx := context.Background()
@@ -143,10 +148,7 @@ func main() {
 			log.Fatalf("unable to create Sheets client: %v", err)
 		}
 
-		//spredsheet_id := "15fK71g_KNd52QEZwrJ2i9MKsJSQrZ4azhDiHRrnkl0s" // test document
 		spredsheet_id := "1C9PIXa_Tm1eP0lHVF3073Nvo3NNYnerdqgqVLQmmMUw" // dev lista
-
-		//titles, values := DownloadSpreadSheetData_seq(spredsheet_id, svc)
 		titles, values := DownloadSpreadSheetData(spredsheet_id, svc)
 
 		SaveValuesCache(titles, values)
