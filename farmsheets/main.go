@@ -6,12 +6,48 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
 
 func DownloadSpreadSheetData(spredsheet_id string, svc *sheets.Service) (titles []string, values []*sheets.ValueRange) {
+	fmt.Println("Getting sheet data ...")
+
+	spread, err := svc.Spreadsheets.Get(spredsheet_id).Do()
+	if err != nil {
+		log.Fatalf("unable to read data: %v", err)
+	}
+
+	titles = make([]string, len(spread.Sheets))
+	values = make([](*sheets.ValueRange), len(spread.Sheets))
+
+	var wg sync.WaitGroup
+	for idx, sheet := range spread.Sheets {
+		wg.Go(func() {
+			vals, err := svc.Spreadsheets.Values.Get(spread.SpreadsheetId, sheet.Properties.Title).Do()
+			if err != nil {
+				fmt.Println("could not get sheet values")
+				os.Exit(1)
+			}
+
+			values[idx] = vals
+			titles[idx] = sheet.Properties.Title
+		})
+	}
+	wg.Wait()
+
+	// print the results to check order is preserved
+	for idx := range spread.Sheets {
+		fmt.Println(idx, titles[idx])
+	}
+
+	fmt.Println("Download complete")
+	return
+}
+
+func DownloadSpreadSheetData_seq(spredsheet_id string, svc *sheets.Service) (titles []string, values []*sheets.ValueRange) {
 	fmt.Println("Getting sheet data ...")
 
 	ss, err := svc.Spreadsheets.Get(spredsheet_id).Do()
@@ -110,6 +146,7 @@ func main() {
 		//spredsheet_id := "15fK71g_KNd52QEZwrJ2i9MKsJSQrZ4azhDiHRrnkl0s" // test document
 		spredsheet_id := "1C9PIXa_Tm1eP0lHVF3073Nvo3NNYnerdqgqVLQmmMUw" // dev lista
 
+		//titles, values := DownloadSpreadSheetData_seq(spredsheet_id, svc)
 		titles, values := DownloadSpreadSheetData(spredsheet_id, svc)
 
 		SaveValuesCache(titles, values)
