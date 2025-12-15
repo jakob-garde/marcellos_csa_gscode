@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -92,4 +93,47 @@ func iterate_sheets_ex(svc *sheets.Service, spredsheet_id string) {
 		fmt.Println(vals.Values[7][0])
 		fmt.Println(vals.Values[7][1])
 	}
+}
+
+func PrintValuesDims_ex(titles []string, values []*sheets.ValueRange) {
+	for idx, sheet_vals := range values {
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("Sheet title: ", titles[idx])
+		fmt.Println("Sheet values: ")
+		fmt.Println("Sheet rows: ", len(sheet_vals.Values))
+
+		// iterate rows
+		for idx, row := range sheet_vals.Values {
+			fmt.Println(idx, len(row))
+		}
+	}
+}
+
+func DownloadSpreadSheetDataSequentially_ex(spredsheet_id string, svc *sheets.Service) (titles []string, values []*sheets.ValueRange) {
+	fmt.Println("Getting sheet data ...")
+
+	ss, err := svc.Spreadsheets.Get(spredsheet_id).Do()
+	if err != nil {
+		log.Fatalf("unable to read data: %v", err)
+	}
+
+	titles = make([]string, 0, 100)
+	values = make([](*sheets.ValueRange), 0, 100)
+
+	for _, sheet := range ss.Sheets {
+		fmt.Printf("%s (%s)\n", sheet.Properties.Title, sheet.Properties.SheetType)
+
+		vals, err := svc.Spreadsheets.Values.Get(ss.SpreadsheetId, sheet.Properties.Title).Do()
+		values = append(values, vals)
+		titles = append(titles, sheet.Properties.Title)
+
+		if err != nil {
+			fmt.Println("could not get sheet values")
+			os.Exit(1)
+		}
+	}
+
+	fmt.Println("Download complete")
+	return
 }

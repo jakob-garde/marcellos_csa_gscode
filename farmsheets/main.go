@@ -17,7 +17,7 @@ func DownloadSpreadSheetData(spredsheet_id string, svc *sheets.Service) (titles 
 
 	spread, err := svc.Spreadsheets.Get(spredsheet_id).Do()
 	if err != nil {
-		log.Fatalf("unable to read data: %v", err)
+		log.Fatalf("Unable to read data: %v", err)
 	}
 
 	titles = make([]string, len(spread.Sheets))
@@ -37,41 +37,11 @@ func DownloadSpreadSheetData(spredsheet_id string, svc *sheets.Service) (titles 
 		})
 	}
 	wg.Wait()
+	fmt.Println("Download complete")
 
-	// print the results to check order is preserved
 	for idx := range spread.Sheets {
 		fmt.Println(idx, titles[idx])
 	}
-
-	fmt.Println("Download complete")
-	return
-}
-
-func DownloadSpreadSheetData_seq(spredsheet_id string, svc *sheets.Service) (titles []string, values []*sheets.ValueRange) {
-	fmt.Println("Getting sheet data ...")
-
-	ss, err := svc.Spreadsheets.Get(spredsheet_id).Do()
-	if err != nil {
-		log.Fatalf("unable to read data: %v", err)
-	}
-
-	titles = make([]string, 0, 100)
-	values = make([](*sheets.ValueRange), 0, 100)
-
-	for _, sheet := range ss.Sheets {
-		fmt.Printf("%s (%s)\n", sheet.Properties.Title, sheet.Properties.SheetType)
-
-		vals, err := svc.Spreadsheets.Values.Get(ss.SpreadsheetId, sheet.Properties.Title).Do()
-		values = append(values, vals)
-		titles = append(titles, sheet.Properties.Title)
-
-		if err != nil {
-			fmt.Println("could not get sheet values")
-			os.Exit(1)
-		}
-	}
-
-	fmt.Println("Download complete")
 	return
 }
 
@@ -99,7 +69,7 @@ func LoadValuesCache() (titles []string, values []*sheets.ValueRange) {
 	}
 	err = json.NewDecoder(f).Decode(&titles)
 	if err != nil {
-		fmt.Println("could not load titles")
+		fmt.Println("Could not load titles.json")
 		os.Exit(1)
 	}
 
@@ -109,30 +79,49 @@ func LoadValuesCache() (titles []string, values []*sheets.ValueRange) {
 	}
 	err = json.NewDecoder(f).Decode(&values)
 	if err != nil {
-		fmt.Println("could not load values")
+		fmt.Println("Could not load values.json")
 		os.Exit(1)
 	}
 
 	return
 }
 
-func PrintValuesDims(titles []string, values []*sheets.ValueRange) {
-	for idx, vals := range values {
-		fmt.Println()
-		fmt.Println()
-		fmt.Println("Sheet title: ", titles[idx])
-		fmt.Println("Sheet values: ")
-		fmt.Println("Sheet rows: ", len(vals.Values))
+func PrintAllData(titles []string, values []*sheets.ValueRange) {
+	for idx_sheet, sheet := range values {
 
-		// iterate rows
-		for idx, row := range vals.Values {
-			fmt.Println(idx, len(row))
+		sheet_vals := sheet
+		sheet_title := titles[idx_sheet]
+
+		fmt.Println("Sheet title: ", sheet_title)
+
+		for idx_row, row := range sheet_vals.Values {
+			fmt.Println(idx_row, len(row))
+			for idx_col, cell := range row {
+
+				// cell is now idx_row, idx_col data
+
+				fmt.Print(idx_col, ": ", cell, " ")
+			}
 		}
 	}
 }
 
+func GetCategories(values []*sheets.ValueRange, from_idx int) (categories []interface{}) {
+	category_sheet := values[0]
+
+	for idx_row, row := range category_sheet.Values {
+		fmt.Println(idx_row, len(row))
+
+		if idx_row >= from_idx && len(row) > 0 {
+			categories = append(categories, row[0])
+		}
+	}
+	return categories
+}
+
 func main() {
 	do_download := false
+
 	if len(os.Args) > 1 && (os.Args[1] == "--download" || os.Args[1] == "-d") {
 		do_download = true
 	} else if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
@@ -141,6 +130,7 @@ func main() {
 	}
 
 	if do_download {
+
 		ctx := context.Background()
 		creds := "./farm-sheets-94e924dcabb8.json"
 		svc, err := sheets.NewService(ctx, option.WithCredentialsFile(creds))
@@ -154,7 +144,13 @@ func main() {
 		SaveValuesCache(titles, values)
 
 	} else {
+
 		titles, values := LoadValuesCache()
-		PrintValuesDims(titles, values)
+		PrintAllData(titles, values)
+		cats := GetCategories(values, 2)
+
+		for _, cat := range cats {
+			fmt.Println(cat)
+		}
 	}
 }
