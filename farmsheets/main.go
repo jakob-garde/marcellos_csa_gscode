@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 
 	"google.golang.org/api/option"
@@ -106,17 +107,95 @@ func PrintAllData(titles []string, values []*sheets.ValueRange) {
 	}
 }
 
-func GetCategories(values []*sheets.ValueRange, from_idx int) (categories []interface{}) {
+func GetCategories(values []*sheets.ValueRange, from_idx int) (categories []string) {
 	category_sheet := values[0]
 
 	for idx_row, row := range category_sheet.Values {
 		fmt.Println(idx_row, len(row))
 
 		if idx_row >= from_idx && len(row) > 0 {
-			categories = append(categories, row[0])
+			categories = append(categories, fmt.Sprint(row[0]))
 		}
 	}
 	return categories
+}
+
+func CreatePickingListData(categories []string, titles []string, values []*sheets.ValueRange) [][]string {
+	row_offset := 2
+	col_offsset := 2
+	row_cnt := len(categories) + row_offset
+	col_cnt := len(titles) + col_offsset
+
+	fmt.Println("Picking List row_cnt: ", row_cnt)
+
+	dest := make([][]string, row_cnt)
+	for i := range dest {
+		row := make([]string, col_cnt)
+		dest[i] = row
+
+		// Title row / groups
+		switch {
+		case i == 0:
+			{
+				for j := range row {
+					switch {
+					case j == 1:
+						{
+							row[j] = "Total"
+						}
+					case j > 1:
+						{
+							row[j] = titles[j-col_offsset]
+						}
+					}
+				}
+			}
+		case i >= row_offset:
+			{
+				var sum int
+				sum = 0
+
+				for j := range row {
+					switch {
+					case j == 0: // categories column
+						{
+							if i >= col_offsset {
+								row[j] = categories[i-row_offset]
+							}
+						}
+					case j == 1:
+						{
+							// Total column - nothing right now
+						}
+					case j >= 2:
+						{
+							sheet := values[j-col_offsset]
+							sheet_row := sheet.Values[i-row_offset+4]
+							if len(sheet_row) > 1 {
+
+								sheet_cell := sheet_row[1]
+								cell := sheet_cell
+
+								row[j] = fmt.Sprint(cell)
+								intval, err := strconv.Atoi(row[j])
+								if err != nil {
+									// empty cell or someone put a string
+									fmt.Println("Error: Could not parse value", i, j)
+								} else {
+									sum += intval
+								}
+							}
+						}
+					}
+				}
+
+				// record Total
+				sum_str := strconv.Itoa(sum)
+				row[1] = sum_str
+			}
+		}
+	}
+	return dest
 }
 
 func main() {
@@ -146,11 +225,35 @@ func main() {
 	} else {
 
 		titles, values := LoadValuesCache()
+
+		// test functions
 		PrintAllData(titles, values)
-		cats := GetCategories(values, 2)
+		first_category_row_idx := 4
+		cats := GetCategories(values, first_category_row_idx)
 
 		for _, cat := range cats {
 			fmt.Println(cat)
+		}
+
+		// actual work functions
+		pickings := CreatePickingListData(cats, titles, values)
+
+		fmt.Println()
+		fmt.Println()
+		fmt.Println("Picking List:")
+		fmt.Println()
+		for _, row := range pickings {
+			fmt.Print("[  ")
+			row_cnt := len(row)
+			for idx, cell := range row {
+
+				fmt.Print(cell)
+
+				if idx < row_cnt {
+					fmt.Print(", ")
+				}
+			}
+			fmt.Print("  ]\n")
 		}
 	}
 }
