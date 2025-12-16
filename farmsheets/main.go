@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"google.golang.org/api/option"
@@ -63,12 +64,12 @@ func SaveValuesCache(titles []string, values []*sheets.ValueRange) {
 	defer fvalues.Close()
 }
 
-func LoadValuesCache() (titles []string, values []*sheets.ValueRange) {
+func LoadValuesCache() (groups []string, values []*sheets.ValueRange) {
 	f, err := os.Open("titles.json")
 	if err != nil {
 		return
 	}
-	err = json.NewDecoder(f).Decode(&titles)
+	err = json.NewDecoder(f).Decode(&groups)
 	if err != nil {
 		fmt.Println("Could not load titles.json")
 		os.Exit(1)
@@ -87,11 +88,11 @@ func LoadValuesCache() (titles []string, values []*sheets.ValueRange) {
 	return
 }
 
-func PrintAllData(titles []string, values []*sheets.ValueRange) {
+func PrintAllData(groups []string, values []*sheets.ValueRange) {
 	for idx_sheet, sheet := range values {
 
 		sheet_vals := sheet
-		sheet_title := titles[idx_sheet]
+		sheet_title := groups[idx_sheet]
 
 		fmt.Println("Sheet title: ", sheet_title)
 
@@ -114,17 +115,18 @@ func GetCategories(values []*sheets.ValueRange, from_idx int) (categories []stri
 		fmt.Println(idx_row, len(row))
 
 		if idx_row >= from_idx && len(row) > 0 {
-			categories = append(categories, fmt.Sprint(row[0]))
+			strval := fmt.Sprint(row[0])
+			categories = append(categories, strval)
 		}
 	}
 	return categories
 }
 
-func CreatePickingListData(categories []string, titles []string, values []*sheets.ValueRange) [][]string {
+func CreatePickingListData(categories []string, groups []string, values []*sheets.ValueRange) [][]string {
 	row_offset := 2
 	col_offsset := 2
 	row_cnt := len(categories) + row_offset
-	col_cnt := len(titles) + col_offsset
+	col_cnt := len(groups) + col_offsset
 
 	fmt.Println("Picking List row_cnt: ", row_cnt)
 
@@ -145,7 +147,7 @@ func CreatePickingListData(categories []string, titles []string, values []*sheet
 						}
 					case j > 1:
 						{
-							row[j] = titles[j-col_offsset]
+							row[j] = groups[j-col_offsset]
 						}
 					}
 				}
@@ -224,10 +226,18 @@ func main() {
 
 	} else {
 
-		titles, values := LoadValuesCache()
+		groups, values := LoadValuesCache()
+
+		// trim the group names
+		for idx := range groups {
+			groupname := groups[idx]
+			groupname = strings.TrimPrefix(groupname, "grupp")
+			groupname = strings.Trim(groupname, " \"")
+			groups[idx] = groupname
+		}
 
 		// test functions
-		PrintAllData(titles, values)
+		PrintAllData(groups, values)
 		first_category_row_idx := 4
 		cats := GetCategories(values, first_category_row_idx)
 
@@ -236,7 +246,7 @@ func main() {
 		}
 
 		// actual work functions
-		pickings := CreatePickingListData(cats, titles, values)
+		pickings := CreatePickingListData(cats, groups, values)
 
 		fmt.Println()
 		fmt.Println()
@@ -249,7 +259,7 @@ func main() {
 
 				fmt.Print(cell)
 
-				if idx < row_cnt {
+				if idx < row_cnt-1 {
 					fmt.Print(", ")
 				}
 			}
