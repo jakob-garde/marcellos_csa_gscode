@@ -5,8 +5,8 @@ function onOpen() {
   ui.createMenu('Administrative functions')
       .addItem('Copy all items to all sheets', 'copyValuesAndFormatting')
       .addItem('Create Family Sheets', 'createPrintableSheets')
-      .addItem('Create Picking List (Veggies)', 'createPickingListVeggies')
-      .addItem('Create Picking List (Diary & Meats)', 'createPickingListDiaryMeat')
+      .addItem('Create Picking List (Veggies)', 'CreatePickingListVeggies')
+      .addItem('Create Picking List (Diary & Meats)', 'CreatePickingListDiaryMeat')
       .addToUi();
 }
 

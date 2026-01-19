@@ -5,24 +5,17 @@ function createPrintableSheets() {
   var destDoc = SpreadsheetApp.create("Printable_sheets_" + Date());
 
   createTemplate(destDoc, srcSheets[0]);
-  templateSheet = destDoc.getSheets()[1];
-
-  // prepare totals sheet
-  totalSheet = destDoc.getSheets()[0];
-  prepareTotalSheet(totalSheet, srcSheets[0]);
+  template = destDoc.getSheets()[1];
 
   for(var i = 0; i < srcSheets.length; i++) {
     console.log("Behandlar ark: " + srcSheets[i].getName());
-    updatePickingList(totalSheet, srcSheets[i]); 
+
+    // TODO: potentially inline into createMemberPages
     createGroupTotalsPage(destDoc, srcSheets[i]);
-    createMemberPages(destDoc, srcSheets[i], templateSheet); 
+    createMemberPages(destDoc, srcSheets[i], template); 
   }
 
-  // auto-resize totalssheet column
-  finalizeTotalsSheet(totalSheet, srcSheets.length);
-
-  // clean up the template sheet
-  destDoc.deleteSheet(templateSheet);
+  destDoc.deleteSheet(template);
 }
 
 function createGroupTotalsPage(destDoc, srcSheet) {
@@ -52,25 +45,25 @@ function createGroupTotalsPage(destDoc, srcSheet) {
     .setVerticalAlignment("middle");
 }
 
-function createMemberPages(destDoc, srcSheet, templateSheet) {
+function createMemberPages(destDoc, srcSheet, template) {
   var srcRowCount = srcSheet.getMaxRows();
 
   var veggies = srcSheet
     .getRange("A:A")
     .getValues();
-  templateSheet
+  template
     .getRange(2, 1, srcSheet.getMaxRows(), 1)
     .setValues(veggies)
     .setFontSize(15).setFontWeight("bold")
     .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
-  templateSheet.autoResizeRows(1, templateSheet.getMaxRows());
+  template.autoResizeRows(1, template.getMaxRows());
 
   var numberOfSheets = Math.ceil((srcSheet.getMaxColumns()-2)/2/2);
   for (var i = 0; i < numberOfSheets; i++) {
     var currentSheetName = srcSheet.getName() + " " + (i+1) + " of " + numberOfSheets;
     Logger.log(currentSheetName);
   
-    var destSheet = templateSheet
+    var destSheet = template
       .copyTo(destDoc)
       .setName(currentSheetName); // duplicate template sheet and set name
     var data = srcSheet
@@ -91,4 +84,26 @@ function createMemberPages(destDoc, srcSheet, templateSheet) {
     destSheet
       .autoResizeColumns(4, 1);
   }
+}
+
+function createTemplate(destDoc, srcSheet) {
+    srcSheet
+        .copyTo(destDoc)
+        .setName("template");
+    template = destDoc.getSheets()[1];
+
+    var srcRowCount = srcSheet.getMaxRows();
+
+    template.deleteColumns(5, template.getMaxColumns() - 5);
+    template.setName("template");
+
+    // set labels/descriptions column
+    var data = srcSheet
+        .getRange(1, 1, srcRowCount, 1)
+        .getValues();
+    template
+        .getRange(2, 1, srcRowCount, 1)
+        .setValues(data)
+        .setFontSize(15).setFontWeight("bold")
+        .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
 }
