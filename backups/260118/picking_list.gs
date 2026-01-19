@@ -7,10 +7,9 @@ function CreatePickingListVeggies() {
   // prepare picking sheet
   pick_sheet = destDoc.getSheets()[0];
 
-  row_start = 4
-  //row_cnt = source[0].getMaxRows() - 3;
-  // TODO: find row "Mejeri"
-  row_cnt = 17 - 3;
+  const row_start = 4
+  const row_mejeri = FindRow(source[0], "Mejeri");
+  const row_cnt = row_mejeri - row_start;
   CreatePickingList(pick_sheet, source, row_start, row_cnt);
 }
 
@@ -24,8 +23,8 @@ function CreatePickingListDairyMeat() {
   pick_sheet = destDoc.getSheets()[0];
 
   // TODO: find row "Mejeri"
-  row_start = 18
-  row_cnt = source[0].getMaxRows() - 3;
+  const row_start = FindRow(source[0], "Mejeri");
+  const row_cnt = source[0].getMaxRows() - 4 + 1;
   CreatePickingList(pick_sheet, source, row_start, row_cnt);
 }
 
@@ -56,7 +55,7 @@ function CreatePickingList(pick_sheet, source, row_start, row_cnt) {
     UpdatePickingList(pick_sheet, source[i], row_start, row_cnt);
   }
 
-  // auto-resize totalssheet column
+  // sum up row values into the totals column
   finalizePickingList(pick_sheet, source.length);
 }
 
@@ -117,7 +116,7 @@ function finalizePickingList(sheet, group_cnt) {
   var nrows = sheet.getLastRow();
   var ncols = sheet.getLastColumn();
   var first_summable_row = 5;
-  for (var i = first_summable_row; i < nrows; i++) {
+  for (var i = first_summable_row; i <= nrows; i++) {
     var data = sheet.getRange(i, 3, 1, ncols - 2).getValues()[0];
     var row_total = 0;
 

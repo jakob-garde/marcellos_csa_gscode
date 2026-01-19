@@ -6,25 +6,28 @@ function CreatePrintableSheets() {
 
   template = CreateTemplate(dest_doc, src_sheets[0]);
 
+  const row_mejeri = FindRow(src_sheets[0], "Mejeri");
+  console.log("mejeri row: ", row_mejeri);
+
   for(var i = 0; i < src_sheets.length; i++) {
     console.log("Behandlar ark: " + src_sheets[i].getName());
 
     src_sheet = src_sheets[i];
 
     row_start = 3;
-    row_end = 17;
+    row_end = row_mejeri;
     CreateGroupTotalsPage(dest_doc, src_sheet, "Veggies ", row_start, row_end);
 
-    row_start = 18;
-    row_end = src_sheet.getMaxRows();
+    row_start = row_mejeri;
+    row_end = src_sheet.getMaxRows() + 1;
     CreateGroupTotalsPage(dest_doc, src_sheet, "Meat ", row_start, row_end);
 
     row_start = 3;
-    row_end = 17;
+    row_end = row_mejeri;
     CreateMemberPages(dest_doc, src_sheet, template, "Vegg_", row_start, row_end);
 
-    row_start = 18;
-    row_end = src_sheet.getMaxRows();
+    row_start = row_mejeri;
+    row_end = src_sheet.getMaxRows() + 1;
     CreateMemberPages(dest_doc, src_sheet, template, "Meat_", row_start, row_end);
   }
 
@@ -34,7 +37,7 @@ function CreatePrintableSheets() {
 function CreateMemberPages(dest_doc, src_sheet, template, name_prefix, row_start, row_end) {
   console.log("CreateMemberPages()");
 
-  const row_cnt = row_end - row_start + 1;
+  const row_cnt = row_end - row_start;
 
   // set group-specific header titles (specific instructions for individual groups may exist)
   template
@@ -115,7 +118,7 @@ function CreateGroupTotalsPage(dest_doc, src_sheet, name_prefix, row_start, row_
     .setName(name);
 
   // Add values of total orders
-  const row_cnt = row_end - row_start + 1;
+  const row_cnt = row_end - row_start;
   const row_first_nonhdr = 3;
   dest_sheet
     .getRange(row_first_nonhdr, 1, row_cnt, 2)
@@ -146,7 +149,8 @@ function CreateTemplate(dest_doc, src_sheet) {
   src_sheet
     .copyTo(dest_doc)
     .setName("template");
-  template = dest_doc.getSheets()[1];
+  dest_doc.deleteSheet(dest_doc.getSheets()[0]);
+  template = dest_doc.getSheets()[0];
   template.setName("template");
 
   template
@@ -159,4 +163,3 @@ function CreateTemplate(dest_doc, src_sheet) {
 
   return template;
 }
-

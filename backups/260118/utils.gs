@@ -64,3 +64,13 @@ function TrimGroupName(name) {
   var name = name.replace(/grupp /g,"").replace(/Grupp /g,"").replace(/\"/g,"");
   return name;
 }
+
+function FindRow(sheet, text) {
+  const col1 = sheet.getRange(1, 1, sheet.getMaxRows(), 1).getValues();
+
+  for (let i = 0; i < col1.length; i++) {
+    if (col1[i][0] === text) {
+      return i + 1;
+    }
+  }
+}
