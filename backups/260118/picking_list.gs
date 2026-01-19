@@ -141,3 +141,4 @@ function finalizePickingList(sheet, group_cnt) {
       .setColumnWidth(col, autosizedWidth * 1.2);
   }
 }
+
