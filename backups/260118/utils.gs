@@ -59,3 +59,8 @@ function DeleteRowsFrom(sheet, row) {
     sheet.deleteRows(row, row_last - row + 1);
   }
 }
+
+function TrimGroupName(name) {
+  var name = name.replace(/grupp /g,"").replace(/Grupp /g,"").replace(/\"/g,"");
+  return name;
+}
