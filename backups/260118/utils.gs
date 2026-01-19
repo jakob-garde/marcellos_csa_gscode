@@ -52,3 +52,10 @@ function setAlternatingColours(sheet) {
     sheet.getRange(i+1, 1, 1, sheet.getMaxColumns()).setBackground("white");  
   }
 }
+
+function DeleteRowsFrom(sheet, row) {
+  const row_last = sheet.getMaxRows();
+  if (row <= row_last) {
+    sheet.deleteRows(row, row_last - row + 1);
+  }
+}

@@ -1,109 +1,131 @@
-function createPrintableSheets() {
-  console.log("createPrintableSheets()");
+function CreatePrintableSheets() {
+  console.log("CreatePrintableSheets()");
 
   var srcSheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
-  var destDoc = SpreadsheetApp.create("Printable_sheets_" + Date());
+  var dest_doc = SpreadsheetApp.create("Printable_sheets_" + Date());
 
-  createTemplate(destDoc, srcSheets[0]);
-  template = destDoc.getSheets()[1];
+  template = CreateTemplate(dest_doc, srcSheets[0]);
 
-  for(var i = 0; i < srcSheets.length; i++) {
+  //for(var i = 0; i < srcSheets.length; i++) {
+  for(var i = 0; i < 1; i++) {
     console.log("Behandlar ark: " + srcSheets[i].getName());
 
-    // TODO: potentially inline into createMemberPages
-    createGroupTotalsPage(destDoc, srcSheets[i]);
-    createMemberPages(destDoc, srcSheets[i], template); 
+    src_sheet = srcSheets[i];
+
+    row_start = 3;
+    row_end = 17;
+    CreateGroupTotalsPage(dest_doc, src_sheet, "Veggies ", row_start, row_end);
+
+    row_start = 18;
+    row_end = src_sheet.getMaxRows();
+    CreateGroupTotalsPage(dest_doc, src_sheet, "Meat ", row_start, row_end);
+
+    //CreateMemberPages(dest_doc, srcSheets[i], template); 
   }
 
-  destDoc.deleteSheet(template);
+  dest_doc.deleteSheet(template);
 }
 
-function createGroupTotalsPage(destDoc, srcSheet) {
-  console.log("createGroupTotalsPage()");
+function CreateGroupTotalsPage(dest_doc, src_sheet, name_prefix, row_start, row_end) {
+  console.log("CreateGroupTotalsPage()");
 
-  currentSheetName = "Total order " + srcSheet.getName();
-  var destSheet = srcSheet
-    .copyTo(destDoc)
-    .setName(currentSheetName);
+  name = name_prefix + src_sheet.getName();
+  var dest_sheet = src_sheet
+    .copyTo(dest_doc)
+    .setName(name);
 
   // Add values of total orders
-  destSheet
-    .getRange("A:B")
-    .setValues( srcSheet.getRange("A:B").getDisplayValues() )
+  row_cnt = row_end - row_start + 1;
+  row_first_nonhdr = 3;
+  dest_sheet
+    .getRange(row_first_nonhdr, 1, row_cnt, 2)
+    .setValues( src_sheet
+                  .getRange(row_start, 1, row_cnt, 2)
+                  .getDisplayValues()
+              )
     .setFontSize(15).setFontWeight("bold");
 
-  setAlternatingColours(destSheet);
-  destSheet.setFrozenColumns(0);
-  destSheet.deleteColumns(3, destSheet.getMaxColumns() - 2);
-  destSheet.autoResizeRows(1, destSheet.getMaxRows());
+  // trim rows below row_start + row_cnt
+  DeleteRowsFrom(dest_sheet, row_cnt + row_first_nonhdr);
 
-  destSheet.autoResizeColumns(2, 1);
-  destSheet
-    .getRange(1, 2, destSheet.getMaxRows(), 1) // col 2, the totals values
+  setAlternatingColours(dest_sheet);
+  dest_sheet.setFrozenColumns(0);
+  dest_sheet.deleteColumns(3, dest_sheet.getMaxColumns() - 2);
+  dest_sheet.autoResizeRows(1, dest_sheet.getMaxRows());
+
+  // format totals values
+  dest_sheet.autoResizeColumns(2, 1);
+  dest_sheet
+    //.getRange(1, 2, dest_sheet.getMaxRows(), 1) // col 2, the totals values
+    .getRange(1, 2, row_cnt, 1)
     .setWrapStrategy(SpreadsheetApp.WrapStrategy.OVERFLOW)
     .setHorizontalAlignment("center")
     .setVerticalAlignment("middle");
 }
 
-function createMemberPages(destDoc, srcSheet, template) {
-  var srcRowCount = srcSheet.getMaxRows();
+function CreateMemberPages(dest_doc, src_sheet, template) {
+  console.log("CreateMemberPages()");
 
-  var veggies = srcSheet
-    .getRange("A:A")
+  var src_row_cnt = src_sheet.getMaxRows();
+
+  var veggies = src_sheet
+    .getRange(1, 1, src_sheet.getMaxRows(), 1)
     .getValues();
   template
-    .getRange(2, 1, srcSheet.getMaxRows(), 1)
+    .getRange(2, 1, src_sheet.getMaxRows(), 1)
     .setValues(veggies)
     .setFontSize(15).setFontWeight("bold")
     .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
   template.autoResizeRows(1, template.getMaxRows());
 
-  var numberOfSheets = Math.ceil((srcSheet.getMaxColumns()-2)/2/2);
-  for (var i = 0; i < numberOfSheets; i++) {
-    var currentSheetName = srcSheet.getName() + " " + (i+1) + " of " + numberOfSheets;
-    Logger.log(currentSheetName);
+  var sheet_cnt = Math.ceil((src_sheet.getMaxColumns()-2)/2/2);
+  for (var i = 0; i < sheet_cnt; i++) {
+    var name = src_sheet.getName() + " " + (i+1) + " of " + sheet_cnt;
+    Logger.log(name);
   
-    var destSheet = template
-      .copyTo(destDoc)
-      .setName(currentSheetName); // duplicate template sheet and set name
-    var data = srcSheet
-      .getRange(1, 3 + 4*i, srcRowCount, 4)
+    var dest_sheet = template
+      .copyTo(dest_doc)
+      .setName(name); // duplicate template sheet and set name
+    var data = src_sheet
+      .getRange(1, 3 + 4*i, src_row_cnt, 4)
       .getValues();
 
-    destSheet
-      .getRange(2, 2, srcRowCount, 4)
+    dest_sheet
+      .getRange(2, 2, src_row_cnt, 4)
       .setValues(data)
       .setFontSize(15).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle")
       .setWrapStrategy(SpreadsheetApp.WrapStrategy.OVERFLOW);
-    destSheet.getRange(1, 1)
-      .setValue(currentSheetName)
+    dest_sheet.getRange(1, 1)
+      .setValue(name)
       .setFontSize(15).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
 
-    destSheet
+    dest_sheet
       .autoResizeColumns(2, 1);
-    destSheet
+    dest_sheet
       .autoResizeColumns(4, 1);
   }
 }
 
-function createTemplate(destDoc, srcSheet) {
-    srcSheet
-        .copyTo(destDoc)
-        .setName("template");
-    template = destDoc.getSheets()[1];
+function CreateTemplate(dest_doc, src_sheet) {
+  src_sheet
+    .copyTo(dest_doc)
+    .setName("template");
+  template = dest_doc.getSheets()[1];
 
-    var srcRowCount = srcSheet.getMaxRows();
+  var src_row_cnt = src_sheet.getMaxRows();
 
-    template.deleteColumns(5, template.getMaxColumns() - 5);
-    template.setName("template");
+  template.deleteColumns(5, template.getMaxColumns() - 5);
+  template.setName("template");
 
-    // set labels/descriptions column
-    var data = srcSheet
-        .getRange(1, 1, srcRowCount, 1)
-        .getValues();
-    template
-        .getRange(2, 1, srcRowCount, 1)
-        .setValues(data)
-        .setFontSize(15).setFontWeight("bold")
-        .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+  // set labels/descriptions column
+  var data = src_sheet
+    .getRange(1, 1, src_row_cnt, 1)
+    .getValues();
+  template
+    .getRange(2, 1, src_row_cnt, 1)
+    .setValues(data)
+    .setFontSize(15).setFontWeight("bold")
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);
+
+  return template;
 }
