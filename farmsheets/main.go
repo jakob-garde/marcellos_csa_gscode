@@ -202,16 +202,42 @@ func CreatePickingListData(categories []string, groups []string, values []*sheet
 
 func main() {
 	do_download := false
+	do_create := true
 
 	if len(os.Args) > 1 && (os.Args[1] == "--download" || os.Args[1] == "-d") {
 		do_download = true
+	} else if len(os.Args) > 1 && (os.Args[1] == "--create") {
+		do_create = true
 	} else if len(os.Args) > 1 && (os.Args[1] == "--help" || os.Args[1] == "-h") {
 		fmt.Println("Use --download to cache sheet data")
 		return
 	}
 
-	if do_download {
+	if do_create {
+		DriveExample()
 
+		/*
+			ctx := context.Background()
+			creds := "./farm-sheets-94e924dcabb8.json"
+			svc, err := sheets.NewService(ctx, option.WithCredentialsFile(creds))
+			if err != nil {
+				log.Fatalf("unable to create Sheets client: %v", err)
+			}
+
+			spreadsheet := &sheets.Spreadsheet{
+				Properties: &sheets.SpreadsheetProperties{
+					Title:   "New Spreadsheet",
+				},
+			}
+
+			resp, err := svc.Spreadsheets.Create(spreadsheet).Do()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("Spreadsheet ID:", resp.SpreadsheetId)
+		*/
+	} else if do_download {
 		ctx := context.Background()
 		creds := "./farm-sheets-94e924dcabb8.json"
 		svc, err := sheets.NewService(ctx, option.WithCredentialsFile(creds))

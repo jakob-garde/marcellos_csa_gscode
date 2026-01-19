@@ -2,28 +2,102 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
 
-func drive_ex() {
-	ctx := context.Background()
-	scopes := []string{
-		"https://spreadsheets.google.com/feeds",
-		"https://www.googleapis.com/auth/spreadsheets",
-		"https://www.googleapis.com/auth/drive.file",
-		"https://www.googleapis.com/auth/drive",
-	}
-	creds := "./farm-sheets-94e924dcabb8.json"
-
-	svc, err := drive.NewService(ctx, option.WithCredentialsFile(creds), option.WithScopes(scopes...))
+func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
+	tokFile := "token.json"
+	tok, err := tokenFromFile(tokFile)
 	if err != nil {
-		log.Fatalf("Unable to create Drive client: %v", err)
+		tok = getTokenFromWeb(config)
+		saveToken(tokFile, tok)
+	}
+	return config.Client(ctx, tok)
+}
+
+func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
+	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
+	fmt.Println("Visit this URL and paste the code:", authURL)
+
+	var code string
+	fmt.Scan(&code)
+
+	tok, err := config.Exchange(context.Background(), code)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return tok
+}
+
+func tokenFromFile(file string) (*oauth2.Token, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	tok := &oauth2.Token{}
+	err = json.NewDecoder(f).Decode(tok)
+	return tok, err
+}
+
+func saveToken(path string, tok *oauth2.Token) {
+	fmt.Println("Saving token to", path)
+	f, err := os.Create(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	json.NewEncoder(f).Encode(tok)
+}
+
+func DriveExample() {
+	ctx := context.Background()
+	/*
+		scopes := []string{
+			drive.DriveScope,
+			sheets.SpreadsheetsScope,
+			"https://spreadsheets.google.com/feeds",
+			//"https://www.googleapis.com/auth/spreadsheets",
+			//"https://www.googleapis.com/auth/drive.file",
+			//"https://www.googleapis.com/auth/drive",
+		}
+	*/
+
+	//creds := "./client_secret_500250491618-5a6i6ul1iipe47fefcif0gcb6aq6mhqg.apps.googleusercontent.com.json"
+	//creds := "./farm-sheets-94e924dcabb8.json"
+
+	creds, err := os.ReadFile("credentials_oauth.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	/*
+		svc, err := drive.NewService(ctx,
+			option.WithCredentialsFile(creds),
+			option.WithScopes(scopes...))
+		if err != nil {
+			log.Fatalf("Unable to create Drive client: %v", err)
+		}
+	*/
+
+	config, _ := google.ConfigFromJSON(
+		creds,
+		drive.DriveScope,
+		sheets.SpreadsheetsScope,
+	)
+	client := getClient(ctx, config)
+	svc, err := drive.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// files list object
@@ -40,6 +114,21 @@ func drive_ex() {
 	for _, f := range items {
 		fmt.Printf("%s (%s)\n", f.Name, f.Id)
 	}
+
+	/*
+		file := &drive.File{
+			Name:     "service_sheet_create",
+			MimeType: "application/vnd.google-apps.spreadsheet",
+			Parents:  []string{"1NT32_gi8ix5AeGHFHSoHHeR6vKQGbewr"},
+		}
+
+		created, err := svc.Files.Create(file).SupportsAllDrives(true).Do()
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			fmt.Println("Created: ", created.Name)
+		}
+	*/
 }
 
 func write_sheet_ex(svc *sheets.Service, spredsheet_id string) {
